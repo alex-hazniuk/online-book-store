@@ -1,50 +1,60 @@
 package com.example.onlinebookstore.repository;
 
+import com.example.onlinebookstore.exception.DataProcessingException;
 import com.example.onlinebookstore.model.Book;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
-import org.hibernate.query.Query;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+@RequiredArgsConstructor
 @Repository
 public class BookRepositoryImpl implements BookRepository {
-    private final SessionFactory sessionFactory;
-
-    public BookRepositoryImpl(SessionFactory sessionFactory) {
-        this.sessionFactory = sessionFactory;
-    }
+    private final EntityManagerFactory entityManagerFactory;
 
     @Override
     public Book save(Book book) {
-        Session session = null;
-        Transaction transaction = null;
+        EntityManager entityManager = null;
+        EntityTransaction entityTransaction = null;
         try {
-            session = sessionFactory.openSession();
-            transaction = session.beginTransaction();
-            session.persist(book);
-            transaction.commit();
+            entityManager = entityManagerFactory.createEntityManager();
+            entityTransaction = entityManager.getTransaction();
+            entityTransaction.begin();
+            entityManager.persist(book);
+            entityTransaction.commit();
             return book;
         } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
+            if (entityTransaction != null) {
+                entityTransaction.rollback();
             }
-            throw new RuntimeException("Can't save book " + book, e);
+            throw new DataProcessingException("Can't save book " + book, e);
         } finally {
-            if (session != null) {
-                session.close();
+            if (entityManager != null) {
+                entityManager.close();
             }
         }
     }
 
     @Override
+    public Optional<Book> findById(Long id) {
+        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
+            return Optional.ofNullable(entityManager.find(Book.class, id));
+        } catch (Exception e) {
+            throw new DataProcessingException("Can't find book by id: " + id, e);
+        }
+    }
+
+    @Override
     public List<Book> findAll() {
-        try (Session session = sessionFactory.openSession()) {
-            Query<Book> books = session.createQuery("from Book", Book.class);
+        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
+            TypedQuery<Book> books = entityManager.createQuery("from Book", Book.class);
             return books.getResultList();
         } catch (Exception e) {
-            throw new RuntimeException("Can't find all books ", e);
+            throw new DataProcessingException("Can't find all books ", e);
         }
     }
 }
