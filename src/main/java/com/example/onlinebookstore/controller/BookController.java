@@ -34,7 +34,7 @@ public class BookController {
     }
 
     @GetMapping("/search")
-    public List<BookDto> getBookByTitleAndAuthor(
+    public List<BookDto> search(
             BookSearchParameters bookSearchParameters) {
         return bookService.search(bookSearchParameters);
     }
